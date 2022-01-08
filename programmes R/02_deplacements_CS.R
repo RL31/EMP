@@ -1,5 +1,8 @@
 library(tidyverse)
 
+# en cours / nbreuses erreurs à reprendre
+
+
 # Regroupement de toutes les infos individuelles
 base_indivkish <- read.csv("donnees/tcm_ind_kish_public.csv",
                            sep=";",
@@ -18,26 +21,64 @@ base_indivkish %>%
 
 
 ############
-##=> PB
+##=> PB sur effectifs
 
 
 
+base_deploc <- read.csv("donnees/k_deploc_public.csv",
+                        sep=";",
+                        colClasses = c("IDENT_IND"="character","IDENT_MEN"="character"))
 
 
-# 
-# base_deploc <- read.csv("donnees/k_deploc_public.csv",
-#                         sep=";",
-#                         colClasses = c("IDENT_IND"="character","IDENT_MEN"="character"))
-# 
-# 
-# base_indivkish %>% 
-#   mutate(CS1 = substr(CS_ACT,1,1)) %>% 
-#   filter(CS1 !="0" & !is.na(CS1)) %>% 
-#   left_join(base_deploc,by=c("ident_ind"="IDENT_IND")) %>% 
-#   filter(!MDATE_jour %in% c("samedi","dimanche")) %>% 
-#   count(MDATE_jour)
-# 
-# wt=POND_JOUR
+
+# reprendre calcul % deplacement
+# IC pas bon
+
+
+# graph avec IC
+base_indivkish %>% 
+  mutate(CS1 = substr(CS_ACT,1,1)) %>% 
+  select(ident_ind,CS1) %>% 
+  left_join(base_deploc %>% select(IDENT_IND,MDATE_jour,mtp,POND_JOUR),
+            by=c("ident_ind"="IDENT_IND")) %>% 
+  filter(!MDATE_jour %in% c("samedi","dimanche")) %>% 
+  count(velo=mtp %in% c("2.1","2.2"),CS1) %>% 
+  group_by(CS1) %>% 
+  mutate(pct=n/sum(n),
+         b_inf = pct-1.96*sqrt((pct*(1-pct))/13825),
+         b_sup = pct+1.96*sqrt((pct*(1-pct))/13825)) %>% 
+  filter(velo==TRUE & !is.na(CS1)) %>% 
+  select(CS1,pct,b_inf,b_sup) %>% 
+  ggplot(aes(x=reorder(CS1,pct),y=pct*100))+
+  geom_bar(stat="identity")+
+  geom_errorbar(aes(ymin = b_inf*100, ymax = b_sup*100), width = 0.2)+
+  scale_x_discrete(name="",
+                   labels=c("1"="Agriculteurs exploitants",
+                            "2"="Artisans, commerçants,\nchefs d'entreprise",
+                            "3"="Cadres et professions\nintellectuelles supérieures",
+                            "4"="Professions intermédiaires",
+                            "5"="Employés",
+                            "6"="Ouvriers"))+
+  labs(y="Part des déplacements réalisés à vélo (%)")+
+  coord_flip()+
+  theme_minimal()
+
+# motifs
+base_indivkish %>% 
+  mutate(CS1 = substr(CS_ACT,1,1)) %>% 
+  select(ident_ind,CS1) %>% 
+  left_join(base_deploc %>% select(IDENT_IND,MDATE_jour,mtp,POND_JOUR,MMOTIFDES,MOTPREC),
+            by=c("ident_ind"="IDENT_IND")) %>% 
+  filter(!MDATE_jour %in% c("samedi","dimanche")) %>% 
+  count(velo=mtp %in% c("2.1","2.2"),CS1,loisirs=substr(MOTPREC,1,1)=="7",wt=POND_JOUR) %>% 
+  group_by(CS1,velo) %>% 
+  mutate(pct=n/sum(n)*100) %>% 
+  filter(velo==TRUE & !is.na(CS1) & loisirs==TRUE)
+
+
+  
+ 
+# POND_JOUR
 # MDATE_jour
 # MMOTIFDES
 # MOTPREC
@@ -61,18 +102,3 @@ base_indivkish %>%
 # 59482,4
 # 
 # 
-# 
-# 
-# 
-# base_analyse_deplacements <- base_indivkish %>% 
-#   mutate(CS1 = substr(CS24,1,1)) %>% 
-#   filter(CS1 !="0" & !is.na(CS1)) %>% 
-#   left_join(base_deploc,by=c("ident_ind"="IDENT_IND"))
-# 
-# 
-# 
-# base_indivkish
-# 
-# base_kish <- read.csv("donnees/k_individu_public.csv",
-#                       sep=";",
-#                       colClasses = c("IDENT_IND"="character","IDENT_MEN"="character"))
